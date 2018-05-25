@@ -2,6 +2,7 @@ from distutils.command.build import build
 from setuptools.command.install import install
 from distutils.core import setup, Extension
 import distutils.command.install as orig
+from distutils.command.build_ext import build_ext
 
 
 # Customize installation according to https://stackoverflow.com/a/21236111
@@ -18,9 +19,20 @@ class CustomInstall(install):
 
 
 include_dirs = ['./include']
-extra_compile_args = ['-O2', '-std=c++11']
-#extra_compile_args = ['-g', '-std=c++11', '-O0', '-Wall']
 
+class BuildExt(build_ext):
+	def build_extensions(self):
+		extra_compile_args = []
+		if self.compiler.compiler_type == 'msvc':
+			extra_compile_args = ['/DNOMINMAX']
+		else:
+			extra_compile_args = ['-O2', '-std=c++11']
+			#extra_compile_args = ['-g', '-std=c++11', '-O0', '-Wall']
+
+		for e in self.extensions:
+			e.extra_compile_args = extra_compile_args
+
+		build_ext.build_extensions(self)
 
 
 extensions = [	Extension(
@@ -28,14 +40,12 @@ extensions = [	Extension(
 					sources=['pyrfr/regression.i'],
 					include_dirs = include_dirs,
 					swig_opts=['-c++', '-modern', '-features', 'nondynamic'] + ['-I{}'.format(s) for s in include_dirs],
-					extra_compile_args = extra_compile_args
 				),
 				Extension(
 					name = 'pyrfr._util',
 					sources=['pyrfr/util.i'],
 					include_dirs = include_dirs,
 					swig_opts=['-c++', '-modern', '-features', 'nondynamic'] + ['-I{}'.format(s) for s in include_dirs],
-					extra_compile_args = extra_compile_args
 				)
 			]
 
@@ -51,5 +61,5 @@ setup(
 	python_requires='>=3',
 	package_data={'pyrfr': ['docstrings.i']},
 	py_modules=['pyrfr'],
-	cmdclass={'build': CustomBuild, 'install': CustomInstall},
+	cmdclass={'build': CustomBuild, 'install': CustomInstall, 'build_ext': BuildExt},
 )
